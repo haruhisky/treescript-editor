@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+
+    <!-- <head>タグ内に追加 -->
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TreeScript Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+        
+        /* モバイル/デスクトップ共通スタイル */
+        .app-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* ヘッダー */
+        .app-header {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        
+        .header-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .header-button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .header-button:active {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        /* メインコンテンツエリア */
+        .content-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* スワイプ可能なページコンテナ */
+        .swiper-container {
+            display: flex;
+            height: 100%;
+            transition: transform 0.3s ease-out;
+            will-change: transform;
+        }
+        
+        .page {
+            width: 100%;
+            height: 100%;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+        
+        /* ページインジケーター */
+        .page-indicators {
+            position: absolute;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            z-index: 5;
+        }
+        
+        .indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.5);
+            transition: background 0.3s;
+        }
+        
+        .indicator.active {
+            background: white;
+        }
+        
+        /* タブバー */
+        .tab-bar {
+            display: flex;
+            background: white;
+            border-top: 1px solid #ddd;
+            flex-shrink: 0;
+            box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+        
+        .tab-item {
+            flex: 1;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
+        }
+        
+        .tab-item:active {
+            background: #f0f0f0;
+        }
+        
+        .tab-item.active::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #1a73e8;
+        }
+        
+        .tab-icon {
+            font-size: 20px;
+        }
+        
+        .tab-label {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .tab-item.active .tab-label {
+            color: #1a73e8;
+        }
+        
+        /* メインエディタ */
+        .main-editor-container {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .main-editor {
+            width: 100%;
+            min-height: 100%;
+            border: none;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            background: transparent;
+        }
+        
+        /* リストコンテナ */
+        .list-container {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 16px;
+            padding-bottom: 80px;
+        }
+        
+        /* アイテムスタイル */
+        .list-item {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        
+        .list-item:active {
+            transform: scale(0.98);
+        }
+        
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: #f8f9fa;
+        }
+        
+        .item-label {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .item-delete {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .item-content {
+            padding: 16px;
+            min-height: 60px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.6;
+        }
+        
+        .item-content:focus {
+            outline: none;
+            background: #f0f8ff;
+        }
+        
+        /* シーンアイテム */
+        .scene-item .item-header {
+            background: #e8f0fe;
+        }
+        
+        .scene-item .item-label {
+            color: #1a73e8;
+        }
+        
+        /* ページアイテム */
+        .page-item .item-header {
+            background: #f8f9fa;
+        }
+        
+        .page-item .item-label {
+            color: #5f6368;
+        }
+        
+        /* セリフアイテム */
+        .dialogue-item {
+            background: #fef7e0;
+            border: 1px solid #f9ab00;
+        }
+        
+        .dialogue-text {
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: white;
+            border-radius: 8px;
+            font-style: italic;
+        }
+        
+        /* フローティングアクションボタン */
+        .fab {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            z-index: 20;
+        }
+        
+        .fab:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        /* Desktop styles */
+        @media (min-width: 768px) {
+            .app-container {
+                flex-direction: row;
+            }
+            
+            .app-header {
+                display: none;
+            }
+            
+            .content-container {
+                display: flex;
+                flex: 1;
+            }
+            
+            .swiper-container {
+                display: flex;
+                transition: none;
+                transform: none !important;
+            }
+            
+            .page {
+                width: 25%;
+                border-right: 1px solid #ddd;
+            }
+            
+            .page:last-child {
+                border-right: none;
+            }
+            
+            .page-header {
+                background: #2c3e50;
+                color: white;
+                padding: 12px 16px;
+                font-weight: bold;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .page-indicators {
+                display: none;
+            }
+            
+            .tab-bar {
+                display: none;
+            }
+            
+            .fab {
+                display: none;
+            }
+            
+            .list-container {
+                padding-bottom: 16px;
+            }
+            
+            .desktop-buttons {
+                display: flex;
+                gap: 8px;
+            }
+            
+            .desktop-button {
+                background: #6c757d;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+            }
+            
+            .desktop-button:hover {
+                background: #5a6268;
+            }
+        }
+        
+        /* Mobile specific */
+        @media (max-width: 767px) {
+            .page-header {
+                display: none;
+            }
+            
+            .desktop-buttons {
+                display: none;
+            }
+        }
+        
+        /* Undo/Redo buttons */
+        .undo-redo-buttons {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .undo-button, .redo-button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .undo-button:disabled, .redo-button:disabled {
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<!-- </body>の直前に追加 -->
+<script>
+// Service Worker登録
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(reg => console.log('SW registered'))
+      .catch(err => console.log('SW registration failed'));
+  });
+}
+</script>
+<body>
+    <div class="app-container">
+        <!-- モバイルヘッダー -->
+        <div class="app-header">
+            <div class="header-title">TreeScript Editor</div>
+            <div class="header-buttons">
+                <div class="undo-redo-buttons">
+                    <button id="undoButton" class="undo-button" onclick="undo()">↶</button>
+                    <button id="redoButton" class="redo-button" onclick="redo()">↷</button>
+                </div>
+                <button class="header-button" onclick="showFileMenu()">📁</button>
+            </div>
+        </div>
+        
+        <!-- メインコンテンツ -->
+        <div class="content-container">
+            <div class="swiper-container" id="swiperContainer">
+                <!-- メインタブ -->
+                <div class="page" data-page="0">
+                    <div class="page-header">
+                        <span>メインタブ</span>
+                        <div class="desktop-buttons">
+                            <div class="undo-redo-buttons">
+                                <button class="undo-button" onclick="undo()">↶</button>
+                                <button class="redo-button" onclick="redo()">↷</button>
+                            </div>
+                            <button onclick="newFile()" class="desktop-button">新規作成</button>
+                            <button onclick="openFile()" class="desktop-button">開く</button>
+                            <button onclick="saveFile()" class="desktop-button">保存</button>
+                        </div>
+                    </div>
+                    <div class="main-editor-container">
+                        <textarea id="mainEditor" class="main-editor" placeholder="ここにテキストを入力...
+
+例:
+{シーン: 朝の教室
+生徒たちが登校してくる時間。
+[ページ: 1ページ目
+「おはよう！」
+主人公が教室に入ってくる。
+]
+[ページ: 2ページ目
+「今日も一日頑張ろう」
+授業が始まる。
+]
+}
+
+{シーン: 昼休み
+[ページ: お弁当タイム
+「お腹すいた～」
+みんなでお弁当を食べる。
+]
+}"></textarea>
+                    </div>
+                </div>
+                
+                <!-- シーンタブ -->
+                <div class="page" data-page="1">
+                    <div class="page-header">
+                        <span>シーンタブ</span>
+                        <div class="desktop-buttons">
+                            <button onclick="addScene()" class="desktop-button">シーン追加</button>
+                        </div>
+                    </div>
+                    <div class="list-container" id="scenesContainer"></div>
+                </div>
+                
+                <!-- ページタブ -->
+                <div class="page" data-page="2">
+                    <div class="page-header">
+                        <span>ページタブ</span>
+                        <div class="desktop-buttons">
+                            <button onclick="addPage()" class="desktop-button">ページ追加</button>
+                        </div>
+                    </div>
+                    <div class="list-container" id="pagesContainer"></div>
+                </div>
+                
+                <!-- セリフタブ -->
+                <div class="page" data-page="3">
+                    <div class="page-header">
+                        <span>セリフタブ</span>
+                        <div class="desktop-buttons">
+                            <button onclick="exportDialogues()" class="desktop-button">エクスポート</button>
+                        </div>
+                    </div>
+                    <div class="list-container" id="dialoguesContainer"></div>
+                </div>
+            </div>
+            
+            <!-- ページインジケーター -->
+            <div class="page-indicators" id="pageIndicators">
+                <span class="indicator active"></span>
+                <span class="indicator"></span>
+                <span class="indicator"></span>
+                <span class="indicator"></span>
+            </div>
+        </div>
+        
+        <!-- タブバー（モバイル用） -->
+        <div class="tab-bar">
+            <div class="tab-item active" data-page="0" onclick="switchToPage(0)">
+                <span class="tab-icon">📝</span>
+                <span class="tab-label">メイン</span>
+            </div>
+            <div class="tab-item" data-page="1" onclick="switchToPage(1)">
+                <span class="tab-icon">🎬</span>
+                <span class="tab-label">シーン</span>
+            </div>
+            <div class="tab-item" data-page="2" onclick="switchToPage(2)">
+                <span class="tab-icon">📄</span>
+                <span class="tab-label">ページ</span>
+            </div>
+            <div class="tab-item" data-page="3" onclick="switchToPage(3)">
+                <span class="tab-icon">💬</span>
+                <span class="tab-label">セリフ</span>
+            </div>
+        </div>
+        
+        <!-- フローティングアクションボタン -->
+        <button class="fab" id="fab" onclick="handleFabClick()">+</button>
+    </div>
+
+    <script>
+        // グローバル変数
+        let currentPage = 0;
+        let data = {
+            scenes: [],
+            pages: [],
+            dialogues: []
+        };
+        
+        // DOM要素
+        let mainEditor;
+        let scenesContainer;
+        let pagesContainer;
+        let dialoguesContainer;
+        let swiperContainer;
+        let pageIndicators;
+        let fab;
+        let undoButton;
+        let redoButton;
+        
+        // 履歴管理
+        let history = [];
+        let historyIndex = -1;
+        const maxHistory = 50;
+        let isUpdatingFromHistory = false;
+        
+        // スワイプ制御
+        let touchStartX = 0;
+        let touchEndX = 0;
+        let isSwiping = false;
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM要素の取得
+            mainEditor = document.getElementById('mainEditor');
+            scenesContainer = document.getElementById('scenesContainer');
+            pagesContainer = document.getElementById('pagesContainer');
+            dialoguesContainer = document.getElementById('dialoguesContainer');
+            swiperContainer = document.getElementById('swiperContainer');
+            pageIndicators = document.getElementById('pageIndicators');
+            fab = document.getElementById('fab');
+            undoButton = document.getElementById('undoButton');
+            redoButton = document.getElementById('redoButton');
+            
+            // 履歴の初期化
+            addToHistory(mainEditor.value);
+            
+            // イベントリスナーの設定
+            setupEventListeners();
+            
+            // 初期表示
+            updateUI();
+            updatePageIndicators();
+            updateTabBar();
+            updateFab();
+        });
+        
+        // イベントリスナーの設定
+        function setupEventListeners() {
+            // テキストエディタのイベント
+            let inputTimer = null;
+            mainEditor.addEventListener('input', (e) => {
+                updateUI();
+                clearTimeout(inputTimer);
+                inputTimer = setTimeout(() => {
+                    addToHistory(mainEditor.value);
+                }, 500);
+            });
+            
+            // スワイプイベント（モバイルのみ）
+            if (window.innerWidth < 768) {
+                swiperContainer.addEventListener('touchstart', handleTouchStart, { passive: true });
+                swiperContainer.addEventListener('touchmove', handleTouchMove, { passive: true });
+                swiperContainer.addEventListener('touchend', handleTouchEnd);
+            }
+            
+            // キーボードショートカット
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    undo();
+                } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                    e.preventDefault();
+                    redo();
+                }
+            });
+            
+            // ウィンドウリサイズ
+            window.addEventListener('resize', () => {
+                if (window.innerWidth >= 768) {
+                    swiperContainer.style.transform = 'translateX(0)';
+                } else {
+                    switchToPage(currentPage);
+                }
+            });
+        }
+        
+        // スワイプハンドラー
+        function handleTouchStart(e) {
+            touchStartX = e.touches[0].clientX;
+            isSwiping = false;
+        }
+        
+        function handleTouchMove(e) {
+            if (!touchStartX) return;
+            
+            const touchX = e.touches[0].clientX;
+            const diffX = touchX - touchStartX;
+            
+            if (Math.abs(diffX) > 10) {
+                isSwiping = true;
+            }
+        }
+        
+        function handleTouchEnd(e) {
+            if (!isSwiping) return;
+            
+            touchEndX = e.changedTouches[0].clientX;
+            const diffX = touchEndX - touchStartX;
+            
+            // スワイプの判定（50px以上で切り替え）
+            if (Math.abs(diffX) > 50) {
+                if (diffX > 0 && currentPage > 0) {
+                    // 右スワイプ（前のページへ）
+                    switchToPage(currentPage - 1);
+                } else if (diffX < 0 && currentPage < 3) {
+                    // 左スワイプ（次のページへ）
+                    switchToPage(currentPage + 1);
+                }
+            }
+            
+            touchStartX = 0;
+            touchEndX = 0;
+            isSwiping = false;
+        }
+        
+        // ページ切り替え
+        function switchToPage(pageIndex) {
+            currentPage = pageIndex;
+            const offset = -pageIndex * 100;
+            swiperContainer.style.transform = `translateX(${offset}%)`;
+            updatePageIndicators();
+            updateTabBar();
+            updateFab();
+        }
+        
+        // ページインジケーターの更新
+        function updatePageIndicators() {
+            const indicators = pageIndicators.querySelectorAll('.indicator');
+            indicators.forEach((indicator, index) => {
+                indicator.classList.toggle('active', index === currentPage);
+            });
+        }
+        
+        // タブバーの更新
+        function updateTabBar() {
+            const tabs = document.querySelectorAll('.tab-item');
+            tabs.forEach((tab, index) => {
+                tab.classList.toggle('active', index === currentPage);
+            });
+        }
+        
+        // FABの更新
+        function updateFab() {
+            if (window.innerWidth >= 768) {
+                fab.style.display = 'none';
+                return;
+            }
+            
+            // メインタブでは非表示
+            fab.style.display = currentPage === 0 ? 'none' : 'flex';
+        }
+        
+        // FABクリックハンドラー
+        function handleFabClick() {
+            switch (currentPage) {
+                case 1:
+                    addScene();
+                    break;
+                case 2:
+                    addPage();
+                    break;
+                case 3:
+                    exportDialogues();
+                    break;
+            }
+        }
+        
+        // ファイルメニューの表示
+        function showFileMenu() {
+            const menu = `
+1. 新規作成
+2. ファイルを開く
+3. 保存
+4. セリフをエクスポート
+
+選択してください:`;
+            
+            const choice = prompt(menu);
+            
+            switch (choice) {
+                case '1':
+                    newFile();
+                    break;
+                case '2':
+                    openFile();
+                    break;
+                case '3':
+                    saveFile();
+                    break;
+                case '4':
+                    exportDialogues();
+                    break;
+            }
+        }
+        
+        // 履歴管理
+        function addToHistory(text) {
+            if (isUpdatingFromHistory) return;
+            
+            history = history.slice(0, historyIndex + 1);
+            history.push(text);
+            
+            if (history.length > maxHistory) {
+                history.shift();
+            }
+            
+            historyIndex = history.length - 1;
+            updateUndoRedoButtons();
+        }
+        
+        function updateUndoRedoButtons() {
+            const undoButtons = document.querySelectorAll('.undo-button');
+            const redoButtons = document.querySelectorAll('.redo-button');
+            
+            undoButtons.forEach(btn => btn.disabled = historyIndex <= 0);
+            redoButtons.forEach(btn => btn.disabled = historyIndex >= history.length - 1);
+        }
+        
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                isUpdatingFromHistory = true;
+                mainEditor.value = history[historyIndex];
+                updateUI();
+                isUpdatingFromHistory = false;
+                updateUndoRedoButtons();
+            }
+        }
+        
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                isUpdatingFromHistory = true;
+                mainEditor.value = history[historyIndex];
+                updateUI();
+                isUpdatingFromHistory = false;
+                updateUndoRedoButtons();
+            }
+        }
+        
+        // テキストのパース
+        function parseText(text) {
+            const newData = {
+                scenes: [],
+                pages: [],
+                dialogues: []
+            };
+            
+            // シーンの抽出
+            const sceneRegex = /\{シーン:\s*([^}]*)\}/g;
+            let sceneMatch;
+            let sceneIndex = 0;
+            let globalPageNumber = 1;
+            
+            while ((sceneMatch = sceneRegex.exec(text)) !== null) {
+                const sceneContent = sceneMatch[1];
+                const sceneId = `scene-${sceneIndex}`;
+                
+                const sceneData = {
+                    id: sceneId,
+                    content: sceneContent,
+                    fullMatch: sceneMatch[0],
+                    startIndex: sceneMatch.index,
+                    endIndex: sceneMatch.index + sceneMatch[0].length,
+                    pages: []
+                };
+                
+                // シーン内のページを抽出
+                const pageRegex = /\[ページ:\s*([^\]]*)\]/g;
+                let pageMatch;
+                
+                while ((pageMatch = pageRegex.exec(sceneContent)) !== null) {
+                    const pageContent = pageMatch[1];
+                    const pageId = `page-${sceneIndex}-${sceneData.pages.length}`;
+                    
+                    // ページ内のセリフを抽出
+                    const dialogues = [];
+                    const dialogueRegex = /「([^」]*)」/g;
+                    let dialogueMatch;
+                    
+                    while ((dialogueMatch = dialogueRegex.exec(pageContent)) !== null) {
+                        dialogues.push(dialogueMatch[1]);
+                    }
+                    
+                    const page = {
+                        id: pageId,
+                        content: pageContent,
+                        sceneId: sceneId,
+                        sceneIndex: sceneIndex,
+                        dialogues: dialogues,
+                        pageNumber: globalPageNumber++
+                    };
+                    
+                    newData.pages.push(page);
+                    sceneData.pages.push(page);
+                    
+                    // セリフをdialoguesに追加
+                    newData.dialogues.push({
+                        pageId: pageId,
+                        sceneId: sceneId,
+                        texts: dialogues
+                    });
+                }
+                
+                newData.scenes.push(sceneData);
+                sceneIndex++;
+            }
+            
+            return newData;
+        }
+        
+        // UI更新
+        function updateUI() {
+            const text = mainEditor.value;
+            data = parseText(text);
+            
+            updateScenes();
+            updatePages();
+            updateDialogues();
+        }
+        
+        // シーンの更新
+        function updateScenes() {
+            scenesContainer.innerHTML = '';
+            
+            if (data.scenes.length === 0) {
+                scenesContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🎬</div>
+                        <div>シーンがありません</div>
+                        <div style="font-size: 14px; margin-top: 8px;">+ ボタンで追加してください</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            data.scenes.forEach((scene, index) => {
+                const sceneItem = document.createElement('div');
+                sceneItem.className = 'list-item scene-item';
+                
+                sceneItem.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-label">シーン ${index + 1}</span>
+                        <button class="item-delete" onclick="deleteScene(${index})">削除</button>
+                    </div>
+                    <div class="item-content" contenteditable="true" data-index="${index}" data-type="scene">${escapeHtml(scene.content).replace(/\n/g, '<br>')}</div>
+                `;
+                
+                // 編集イベント
+                const contentDiv = sceneItem.querySelector('.item-content');
+                setupContentEditable(contentDiv, index, 'scene');
+                
+                scenesContainer.appendChild(sceneItem);
+            });
+        }
+        
+        // ページの更新
+        function updatePages() {
+            pagesContainer.innerHTML = '';
+            
+            if (data.pages.length === 0) {
+                pagesContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📄</div>
+                        <div>ページがありません</div>
+                        <div style="font-size: 14px; margin-top: 8px;">シーンを追加してください</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            let currentSceneId = null;
+            
+            data.pages.forEach((page, index) => {
+                // シーン区切りを表示
+                if (page.sceneId !== currentSceneId) {
+                    currentSceneId = page.sceneId;
+                    const sceneIndex = data.scenes.findIndex(s => s.id === page.sceneId);
+                    
+                    const separator = document.createElement('div');
+                    separator.style.padding = '8px 16px';
+                    separator.style.color = '#666';
+                    separator.style.fontSize = '14px';
+                    separator.innerHTML = `<strong>シーン ${sceneIndex + 1}</strong>`;
+                    pagesContainer.appendChild(separator);
+                    
+                    // ページ追加ボタン
+                    const addButton = document.createElement('button');
+                    addButton.className = 'header-button';
+                    addButton.style.margin = '0 16px 12px';
+                    addButton.style.background = '#17a2b8';
+                    addButton.textContent = '+ このシーンにページを追加';
+                    addButton.onclick = () => addPageToScene(page.sceneId, sceneIndex);
+                    pagesContainer.appendChild(addButton);
+                }
+                
+                const pageItem = document.createElement('div');
+                pageItem.className = 'list-item page-item';
+                
+                pageItem.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-label">ページ ${page.pageNumber}</span>
+                        <button class="item-delete" onclick="deletePage(${index})">削除</button>
+                    </div>
+                    <div class="item-content" contenteditable="true" data-index="${index}" data-type="page">${escapeHtml(page.content).replace(/\n/g, '<br>')}</div>
+                `;
+                
+                // 編集イベント
+                const contentDiv = pageItem.querySelector('.item-content');
+                setupContentEditable(contentDiv, index, 'page');
+                
+                pagesContainer.appendChild(pageItem);
+            });
+        }
+        
+        // セリフの更新
+        function updateDialogues() {
+            dialoguesContainer.innerHTML = '';
+            
+            if (data.dialogues.length === 0) {
+                dialoguesContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">💬</div>
+                        <div>セリフがありません</div>
+                        <div style="font-size: 14px; margin-top: 8px;">ページに「」でセリフを追加してください</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            data.dialogues.forEach((dialogueGroup, index) => {
+                if (dialogueGroup.texts.length === 0) return;
+                
+                const dialogueItem = document.createElement('div');
+                dialogueItem.className = 'list-item dialogue-item';
+                
+                const page = data.pages.find(p => p.id === dialogueGroup.pageId);
+                
+                dialogueItem.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-label">ページ ${page ? page.pageNumber : '?'}</span>
+                    </div>
+                    <div class="item-content">
+                        ${dialogueGroup.texts.map(text => `<div class="dialogue-text">${escapeHtml(text).replace(/\n/g, '<br>')}</div>`).join('')}
+                    </div>
+                `;
+                
+                dialoguesContainer.appendChild(dialogueItem);
+            });
+        }
+        
+        // コンテンツ編集可能要素のセットアップ
+        function setupContentEditable(element, index, type) {
+            let isComposing = false;
+            
+            element.addEventListener('compositionstart', () => {
+                isComposing = true;
+            });
+            
+            element.addEventListener('compositionend', () => {
+                isComposing = false;
+            });
+            
+            element.addEventListener('input', (e) => {
+                if (!isComposing) {
+                    const newContent = htmlToText(e.target.innerHTML);
+                    if (type === 'scene') {
+                        updateSceneContent(index, newContent, false);
+                    } else if (type === 'page') {
+                        updatePageContent(index, newContent, false);
+                    }
+                }
+            });
+            
+            element.addEventListener('blur', (e) => {
+                const newContent = htmlToText(e.target.innerHTML);
+                if (type === 'scene') {
+                    updateSceneContent(index, newContent, true);
+                } else if (type === 'page') {
+                    updatePageContent(index, newContent, true);
+                }
+                addToHistory(mainEditor.value);
+            });
+            
+            element.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    document.execCommand('insertLineBreak');
+                }
+            });
+        }
+        
+        // シーン内容の更新
+        function updateSceneContent(index, newContent, shouldUpdateUI = true) {
+            const text = mainEditor.value;
+            const scenes = [...text.matchAll(/\{シーン:\s*([^}]*)\}/g)];
+            
+            if (scenes[index]) {
+                const oldScene = scenes[index][0];
+                const oldContent = scenes[index][1];
+                const trimmedOldContent = oldContent.replace(/\n+$/, '');
+                const trimmedNewContent = newContent.replace(/\n+$/, '');
+                const trailingNewlines = oldContent.match(/\n*$/)[0];
+                const newScene = oldScene.replace(oldContent, trimmedNewContent + trailingNewlines);
+                
+                mainEditor.value = text.replace(oldScene, newScene);
+                if (shouldUpdateUI) {
+                    updateUI();
+                }
+            }
+        }
+        
+        // ページ内容の更新
+        function updatePageContent(index, newContent, shouldUpdateUI = true) {
+            const text = mainEditor.value;
+            const allPages = [...text.matchAll(/\[ページ:\s*([^\]]*)\]/g)];
+            
+            let pageCount = 0;
+            for (let match of allPages) {
+                if (pageCount === index) {
+                    const oldPage = match[0];
+                    const oldContent = match[1];
+                    const trimmedOldContent = oldContent.replace(/\n+$/, '');
+                    const trimmedNewContent = newContent.replace(/\n+$/, '');
+                    const trailingNewlines = oldContent.match(/\n*$/)[0];
+                    const newPage = oldPage.replace(oldContent, trimmedNewContent + trailingNewlines);
+                    
+                    mainEditor.value = text.replace(oldPage, newPage);
+                    if (shouldUpdateUI) {
+                        updateUI();
+                    }
+                    break;
+                }
+                pageCount++;
+            }
+        }
+        
+        // シーンの削除
+        function deleteScene(index) {
+            if (confirm('このシーンを削除しますか？')) {
+                const text = mainEditor.value;
+                const scenes = [...text.matchAll(/\{シーン:\s*([^}]*)\}/g)];
+                
+                if (scenes[index]) {
+                    mainEditor.value = text.replace(scenes[index][0], '');
+                    updateUI();
+                    addToHistory(mainEditor.value);
+                }
+            }
+        }
+        
+        // ページの削除
+        function deletePage(index) {
+            if (confirm('このページを削除しますか？')) {
+                const text = mainEditor.value;
+                const allPages = [...text.matchAll(/\[ページ:\s*([^\]]*)\]/g)];
+                
+                let pageCount = 0;
+                for (let match of allPages) {
+                    if (pageCount === index) {
+                        mainEditor.value = text.replace(match[0], '');
+                        break;
+                    }
+                    pageCount++;
+                }
+                updateUI();
+                addToHistory(mainEditor.value);
+            }
+        }
+        
+        // シーンの追加
+        function addScene() {
+            const newScene = '\n\n{シーン: 新しいシーン\n[ページ: 新しいページ\n「セリフ」\n]\n}';
+            mainEditor.value += newScene;
+            updateUI();
+            addToHistory(mainEditor.value);
+        }
+        
+        // ページの追加
+        function addPage() {
+            const newScene = '\n\n{シーン: 新しいシーン\n[ページ: 新しいページ\n「セリフ」\n]\n}';
+            mainEditor.value += newScene;
+            updateUI();
+            addToHistory(mainEditor.value);
+        }
+        
+        // 特定のシーンにページを追加
+        function addPageToScene(sceneId, sceneIndex) {
+            const text = mainEditor.value;
+            const scenes = [...text.matchAll(/\{シーン:\s*([^}]*)\}/g)];
+            
+            if (scenes[sceneIndex]) {
+                const sceneMatch = scenes[sceneIndex];
+                const sceneContent = sceneMatch[0];
+                const newPage = '\n[ページ: 新しいページ\n「セリフ」\n]';
+                const newSceneContent = sceneContent.replace(/\}$/, newPage + '\n}');
+                
+                mainEditor.value = text.replace(sceneContent, newSceneContent);
+                updateUI();
+                addToHistory(mainEditor.value);
+            }
+        }
+        
+        // セリフのエクスポート
+        function exportDialogues() {
+            const allDialogues = [];
+            data.dialogues.forEach(group => {
+                allDialogues.push(...group.texts);
+            });
+            
+            const dialogueText = allDialogues.join('\n\n');
+            const blob = new Blob([dialogueText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'dialogues.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // ファイル操作
+        let currentFileName = null;
+        
+        function newFile() {
+            if (mainEditor.value && !confirm('現在の内容を破棄して新規作成しますか？')) {
+                return;
+            }
+            mainEditor.value = '';
+            currentFileName = null;
+            history = [''];
+            historyIndex = 0;
+            updateUI();
+            updateUndoRedoButtons();
+        }
+        
+        function openFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        mainEditor.value = e.target.result;
+                        currentFileName = file.name;
+                        history = [e.target.result];
+                        historyIndex = 0;
+                        updateUI();
+                        updateUndoRedoButtons();
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+        
+        function saveFile() {
+            const text = mainEditor.value;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFileName || 'treescript-document.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // ユーティリティ関数
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function htmlToText(html) {
+            let text = html.replace(/<br\s*\/?>/gi, '\n');
+            text = text.replace(/<[^>]*>/g, '');
+            const textarea = document.createElement('textarea');
+            textarea.innerHTML = text;
+            return textarea.value;
+        }
+    </script>
+</body>
+</html>
