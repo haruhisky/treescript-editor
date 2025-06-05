@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-
     <!-- <head>タグ内に追加 -->
     <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" href="./icon-192.png">
@@ -76,6 +75,9 @@
             flex: 1;
             position: relative;
             overflow: hidden;
+            /* モバイルでヘッダーとタブバーの間の高さを確保 */
+            display: flex;
+            flex-direction: column;
         }
         
         /* スワイプ可能なページコンテナ */
@@ -84,6 +86,7 @@
             height: 100%;
             transition: transform 0.3s ease-out;
             will-change: transform;
+            flex: 1;
         }
         
         .page {
@@ -98,7 +101,7 @@
         /* ページインジケーター */
         .page-indicators {
             position: absolute;
-            bottom: 70px;
+            bottom: 10px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
@@ -266,6 +269,22 @@
             color: #5f6368;
         }
         
+        /* 編集中の要素を最前面に表示（PC版） */
+        @media (min-width: 768px) {
+            .item-content {
+                position: relative;
+                z-index: 1;
+                transition: z-index 0s;
+            }
+            
+            .item-content:focus {
+                z-index: 100;
+                position: relative;
+                background: white;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            }
+        }
+        
         /* セリフアイテム */
         .dialogue-item {
             background: #fef7e0;
@@ -318,7 +337,8 @@
         /* Desktop styles */
         @media (min-width: 768px) {
             .app-container {
-                flex-direction: row;
+                flex-direction: column;
+                height: 100vh;
             }
             
             .app-header {
@@ -328,17 +348,22 @@
             .content-container {
                 display: flex;
                 flex: 1;
+                flex-direction: row;
             }
             
             .swiper-container {
                 display: flex;
                 transition: none;
                 transform: none !important;
+                width: 100%;
+                flex-direction: row;
             }
             
             .page {
                 width: 25%;
+                min-width: 250px;
                 border-right: 1px solid #ddd;
+                flex-shrink: 0;
             }
             
             .page:last-child {
@@ -353,6 +378,7 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                flex-shrink: 0;
             }
             
             .page-indicators {
@@ -400,6 +426,11 @@
             .desktop-buttons {
                 display: none;
             }
+            
+            /* モバイルでコンテンツエリアの高さを調整 */
+            .content-container {
+                height: calc(100vh - 60px - 60px); /* ヘッダーとタブバーの高さを引く */
+            }
         }
         
         /* Undo/Redo buttons */
@@ -425,13 +456,17 @@
 </head>
 <!-- </body>の直前に追加 -->
 <script>
-// Service Worker登録
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(reg => console.log('SW registered'))
-      .catch(err => console.log('SW registration failed'));
-  });
+// Service Worker登録（エラーハンドリング付き）
+try {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(reg => console.log('SW registered'))
+        .catch(err => console.log('SW registration failed:', err));
+    });
+  }
+} catch (error) {
+  console.log('Service Worker is not available in this environment:', error);
 }
 </script>
 <body>
@@ -1236,14 +1271,26 @@ if ('serviceWorker' in navigator) {
         }
         
         function saveFile() {
-            const text = mainEditor.value;
-            const blob = new Blob([text], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = currentFileName || 'treescript-document.txt';
-            a.click();
-            URL.revokeObjectURL(url);
+            // プロンプトでファイル名を入力
+            const defaultName = currentFileName || 'treescript-document.txt';
+            const fileName = prompt('ファイル名を入力してください:', defaultName);
+            
+            if (fileName) {
+                // .txt拡張子がない場合は追加
+                const finalFileName = fileName.endsWith('.txt') ? fileName : fileName + '.txt';
+                
+                const text = mainEditor.value;
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = finalFileName;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                // 保存したファイル名を記憶
+                currentFileName = finalFileName;
+            }
         }
         
         // ユーティリティ関数
