@@ -1,0 +1,26 @@
+{
+  "name": "TreeScript Editor - 漫画ネーム作成ツール",
+  "short_name": "TreeScript",
+  "description": "漫画制作に特化した階層構造型テキストエディター。シーン→ページ→セリフで管理し、クリスタとの連携も可能。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#2c3e50",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "ja"
+}
