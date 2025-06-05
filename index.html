@@ -269,6 +269,22 @@
             color: #5f6368;
         }
         
+        /* 編集中の要素を最前面に表示（PC版） */
+        @media (min-width: 768px) {
+            .item-content {
+                position: relative;
+                z-index: 1;
+                transition: z-index 0s;
+            }
+            
+            .item-content:focus {
+                z-index: 100;
+                position: relative;
+                background: white;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            }
+        }
+        
         /* セリフアイテム */
         .dialogue-item {
             background: #fef7e0;
@@ -440,13 +456,17 @@
 </head>
 <!-- </body>の直前に追加 -->
 <script>
-// Service Worker登録
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(reg => console.log('SW registered'))
-      .catch(err => console.log('SW registration failed'));
-  });
+// Service Worker登録（エラーハンドリング付き）
+try {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(reg => console.log('SW registered'))
+        .catch(err => console.log('SW registration failed:', err));
+    });
+  }
+} catch (error) {
+  console.log('Service Worker is not available in this environment:', error);
 }
 </script>
 <body>
@@ -916,21 +936,6 @@ if ('serviceWorker' in navigator) {
         
         // シーンの更新
         function updateScenes() {
-            // 編集中の要素の情報を保存
-            const editingInfo = window.currentEditingElement;
-            const shouldRestoreFocus = editingInfo && editingInfo.type === 'scene';
-            let selectionStart = 0;
-            let selectionEnd = 0;
-            
-            if (shouldRestoreFocus) {
-                const selection = window.getSelection();
-                if (selection.rangeCount > 0) {
-                    const range = selection.getRangeAt(0);
-                    selectionStart = range.startOffset;
-                    selectionEnd = range.endOffset;
-                }
-            }
-            
             scenesContainer.innerHTML = '';
             
             if (data.scenes.length === 0) {
@@ -961,53 +966,11 @@ if ('serviceWorker' in navigator) {
                 setupContentEditable(contentDiv, index, 'scene');
                 
                 scenesContainer.appendChild(sceneItem);
-                
-                // フォーカスを復元
-                if (shouldRestoreFocus && editingInfo.index === index) {
-                    setTimeout(() => {
-                        contentDiv.focus();
-                        // カーソル位置を復元
-                        try {
-                            const textNode = contentDiv.childNodes[0];
-                            if (textNode) {
-                                const range = document.createRange();
-                                const sel = window.getSelection();
-                                range.setStart(textNode, Math.min(selectionStart, textNode.length));
-                                range.setEnd(textNode, Math.min(selectionEnd, textNode.length));
-                                sel.removeAllRanges();
-                                sel.addRange(range);
-                            }
-                        } catch (e) {
-                            // カーソル位置の復元に失敗した場合は末尾に配置
-                            const range = document.createRange();
-                            const sel = window.getSelection();
-                            range.selectNodeContents(contentDiv);
-                            range.collapse(false);
-                            sel.removeAllRanges();
-                            sel.addRange(range);
-                        }
-                    }, 0);
-                }
             });
         }
         
         // ページの更新
         function updatePages() {
-            // 編集中の要素の情報を保存
-            const editingInfo = window.currentEditingElement;
-            const shouldRestoreFocus = editingInfo && editingInfo.type === 'page';
-            let selectionStart = 0;
-            let selectionEnd = 0;
-            
-            if (shouldRestoreFocus) {
-                const selection = window.getSelection();
-                if (selection.rangeCount > 0) {
-                    const range = selection.getRangeAt(0);
-                    selectionStart = range.startOffset;
-                    selectionEnd = range.endOffset;
-                }
-            }
-            
             pagesContainer.innerHTML = '';
             
             if (data.pages.length === 0) {
@@ -1062,33 +1025,6 @@ if ('serviceWorker' in navigator) {
                 setupContentEditable(contentDiv, index, 'page');
                 
                 pagesContainer.appendChild(pageItem);
-                
-                // フォーカスを復元
-                if (shouldRestoreFocus && editingInfo.index === index) {
-                    setTimeout(() => {
-                        contentDiv.focus();
-                        // カーソル位置を復元
-                        try {
-                            const textNode = contentDiv.childNodes[0];
-                            if (textNode) {
-                                const range = document.createRange();
-                                const sel = window.getSelection();
-                                range.setStart(textNode, Math.min(selectionStart, textNode.length));
-                                range.setEnd(textNode, Math.min(selectionEnd, textNode.length));
-                                sel.removeAllRanges();
-                                sel.addRange(range);
-                            }
-                        } catch (e) {
-                            // カーソル位置の復元に失敗した場合は末尾に配置
-                            const range = document.createRange();
-                            const sel = window.getSelection();
-                            range.selectNodeContents(contentDiv);
-                            range.collapse(false);
-                            sel.removeAllRanges();
-                            sel.addRange(range);
-                        }
-                    }, 0);
-                }
             });
         }
         
@@ -1140,16 +1076,6 @@ if ('serviceWorker' in navigator) {
                 isComposing = false;
             });
             
-            // フォーカス時の処理
-            element.addEventListener('focus', (e) => {
-                // 編集中の要素を記録
-                window.currentEditingElement = {
-                    element: e.target,
-                    index: index,
-                    type: type
-                };
-            });
-            
             element.addEventListener('input', (e) => {
                 if (!isComposing) {
                     const newContent = htmlToText(e.target.innerHTML);
@@ -1169,9 +1095,6 @@ if ('serviceWorker' in navigator) {
                     updatePageContent(index, newContent, true);
                 }
                 addToHistory(mainEditor.value);
-                
-                // 編集中の要素をクリア
-                window.currentEditingElement = null;
             });
             
             element.addEventListener('keydown', (e) => {
