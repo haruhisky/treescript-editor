@@ -1013,16 +1013,47 @@
         
         // UI更新
         function updateUI() {
+            // 現在開いているシーンのIDを保存
+            const openScenes = [];
+            document.querySelectorAll('.scene-content.open').forEach(content => {
+                const sceneItem = content.closest('.scene-item');
+                if (sceneItem && sceneItem.dataset.sceneId) {
+                    openScenes.push(sceneItem.dataset.sceneId);
+                }
+            });
+            
             const text = mainEditor.value;
             data = parseText(text);
             
             updateScenes();
             updateDialogues();
             saveToStorage();
+            
+            // 開いていたシーンを復元
+            openScenes.forEach(sceneId => {
+                const sceneItem = document.querySelector(`[data-scene-id="${sceneId}"]`);
+                if (sceneItem) {
+                    const sceneContent = sceneItem.querySelector('.scene-content');
+                    const toggle = sceneItem.querySelector('.scene-toggle');
+                    if (sceneContent && toggle) {
+                        sceneContent.classList.add('open');
+                        toggle.classList.add('open');
+                    }
+                }
+            });
         }
         
         // シーンの更新
         function updateScenes() {
+            // 現在開いているシーンのIDを取得
+            const openScenes = [];
+            document.querySelectorAll('.scene-content.open').forEach(content => {
+                const sceneItem = content.closest('.scene-item');
+                if (sceneItem && sceneItem.dataset.sceneId) {
+                    openScenes.push(sceneItem.dataset.sceneId);
+                }
+            });
+            
             scenesContainer.innerHTML = '';
             
             if (data.scenes.length === 0) {
@@ -1041,7 +1072,7 @@
                 sceneItem.className = 'scene-item';
                 sceneItem.dataset.sceneId = scene.id;
                 
-                const isOpen = currentOpenScene === scene.id;
+                const isOpen = openScenes.includes(scene.id);  // ← ここが変更点
                 
                 sceneItem.innerHTML = `
                     <div class="scene-header" onclick="toggleScene('${scene.id}')">
