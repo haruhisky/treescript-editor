@@ -1102,30 +1102,22 @@
             });
         }
         
+
         // シーンの開閉切り替え
         function toggleScene(sceneId) {
             const sceneItem = document.querySelector(`[data-scene-id="${sceneId}"]`);
             const sceneContent = sceneItem.querySelector('.scene-content');
             const toggle = sceneItem.querySelector('.scene-toggle');
             
-            if (currentOpenScene === sceneId) {
-                // 現在のシーンを閉じる
+            // 開閉状態を切り替える
+            if (sceneContent.classList.contains('open')) {
+                // 閉じる
                 sceneContent.classList.remove('open');
                 toggle.classList.remove('open');
-                currentOpenScene = null;
             } else {
-                // 他のシーンを閉じる
-                document.querySelectorAll('.scene-content.open').forEach(content => {
-                    content.classList.remove('open');
-                });
-                document.querySelectorAll('.scene-toggle.open').forEach(t => {
-                    t.classList.remove('open');
-                });
-                
-                // 選択したシーンを開く
+                // 開く
                 sceneContent.classList.add('open');
                 toggle.classList.add('open');
-                currentOpenScene = sceneId;
             }
         }
         
